@@ -7,7 +7,7 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   port: 5432,
   username: 'postgres',
   password: '1234',
-  database: 'kubodb',
+  schema: 'kubodb',
   entities: ['dist/**/*.entity.{js,ts}'],
   synchronize: true,
   namingStrategy: new SnakeNamingStrategy(),
