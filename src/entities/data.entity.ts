@@ -4,18 +4,18 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Fragment } from './fragment.entity';
 
 // describe about User Entity with jsdoc-syntax
 /**
  * @class Data
- * @description 데이터 기초명
+ * @description 데이터
  * @extends BaseEntity
- * @property {string} path 경로명
+ * @property {string} path 지정경로
+ * @property {string} cid 조각 고유번호
+ * @property {string} data_id 데이터 번호
  */
 @Entity({ name: 'data' })
 export class Data extends BaseEntity {
@@ -28,6 +28,19 @@ export class Data extends BaseEntity {
     comment: '경로명',
   })
   path: string;
+
+  @Column('varchar', {
+    array: true,
+    unique: true,
+    comment: 'cids',
+  })
+  cids: string[];
+
+  @Column('varchar', {
+    array: true,
+    comment: 'keys',
+  })
+  keys: string[];
 
   @CreateDateColumn({
     type: 'timestamp',
@@ -46,9 +59,4 @@ export class Data extends BaseEntity {
     comment: '삭제날짜',
   })
   deletedAt: Date;
-
-  @OneToMany(() => Fragment, (fragments) => fragments.data, {
-    cascade: ['insert', 'recover', 'remove', 'soft-remove', 'update'],
-  })
-  fragments: Fragment[];
 }

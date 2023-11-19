@@ -5,7 +5,9 @@ import {
   Param,
   // Get,
   Post,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { AppService } from './app.service';
 
 @Controller()
@@ -38,6 +40,7 @@ export class AppController {
     return this.appService.postContents(data);
   }
 
+  //https://docs.nestjs.com/techniques/streaming-files
   @Get('/contents')
   async getContents(@Body() body: { path: string }) {
     return this.appService.getContents(body.path);

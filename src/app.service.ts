@@ -3,7 +3,6 @@ import { createCipheriv, createDecipheriv, scrypt } from 'crypto';
 import { EntityManager } from 'typeorm';
 import { promisify } from 'util';
 import { Data } from './entities/data.entity';
-import { Fragment } from './entities/fragment.entity';
 // import { create, IPFSHTTPClient } from 'kubo-rpc-client';
 
 @Injectable()
@@ -27,67 +26,49 @@ export class AppService {
         ),
       );
     }
-    console.log(fragments);
 
     const iv = Buffer.from('passwordpassword').subarray(0, 16);
     const dbData = this.entityManager.create(Data, {
       path: '/asdf',
-      fragments: [],
+      cids: [],
+      keys: [],
     });
-    await this.entityManager.transaction(
-      async (entityManager: EntityManager) => {
-        const loadedDbData = await entityManager.save(dbData);
-        await entityManager.save(
-          await Promise.all(
-            fragments.map(async (frag) => {
-              // The key length is dependent on the algorithm.
-              // In this case for aes256, it is 32 bytes.
-              const key = (await promisify(scrypt)(frag, 'salt', 32)) as Buffer;
-              console.log(key);
-              const cipher = createCipheriv('aes-256-ctr', key, iv);
-              const encrypted = Buffer.concat([
-                cipher.update(frag, 'utf8'),
-                cipher.final(),
-              ]);
-              console.log(key.toString('hex'));
-              console.log(Buffer.from(key.toString('hex'), 'hex'));
-              return this.entityManager.create(Fragment, {
-                cid: encrypted.toString('hex'),
-                key: key.toString('hex'),
-                data: loadedDbData,
-              });
-            }),
-          ),
-        );
-      },
-    );
-    return 'ok';
+    for (let i = 0; i < split_count; i++) {
+      const frag = fragments[i];
+      const key = (await promisify(scrypt)(dbData.path, 'salt', 32)) as Buffer;
+      // console.log(key);
+      const cipher = createCipheriv('aes-256-ctr', key, iv);
+      const encrypted = Buffer.concat([
+        cipher.update(frag, 'utf8'),
+        cipher.final(),
+      ]);
+      dbData.cids.push(encrypted.toString('hex'));
+      dbData.keys.push(key.toString('hex'));
+    }
+
+    return dbData.save();
   }
 
   async getContents(path: string) {
-    // const encrypts: Buffer[] = [];
-    const encrypts: string[] = [];
-    const dbData = await this.entityManager.findOne(Data, {
-      select: { fragments: true },
-      where: { path },
-      relations: { fragments: true },
-    });
+    const decrypts: string[] = [];
+    const dbData = await this.entityManager.findOneBy(Data, { path });
+    console.log(dbData.cids);
     for (let i = 0; i < 5; i++) {
-      console.log(dbData.fragments[i].key);
-      const key = Buffer.from(dbData.fragments[i].key, 'hex');
-      console.log(key);
+      const key = Buffer.from(dbData.keys[i], 'hex');
       const decipher = createDecipheriv(
         'aes-256-ctr',
         key,
         Buffer.from('passwordpassword').subarray(0, 16),
       );
-      const encrypt = Buffer.concat([
-        decipher.update(Buffer.from(dbData.fragments[i].cid, 'utf8')),
+      const encryptedText = Buffer.from(dbData.cids[i], 'hex');
+      const decryptedText = Buffer.concat([
+        decipher.update(encryptedText),
         decipher.final(),
-      ]).toString('hex');
-      encrypts.push(encrypt);
+      ]);
+      console.log(decryptedText);
+      decrypts.push(decryptedText.toString('utf8'));
     }
 
-    return encrypts;
+    return decrypts;
   }
 }
